@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-#-*- coding:utf-8 -*-
-
 '''
-Copyright (c) 2019, QuantiKa14 Servicios Integrales S.L
+Copyright (c) 2020, QuantiKa14 Servicios Integrales S.L
 All rights reserved.
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met: 
@@ -27,55 +24,72 @@ either expressed or implied, of the FreeBSD Project.
 '''
 
 #AUTHOR: JORGE WEBSEC
-import wikipedia, requests, json, re
+import wikipedia, wikipediaapi, requests, json, re, os, wget
 from bs4 import BeautifulSoup
+from search_engines import Dogpile
+from search_engines import Google
+from tldextract import extract
+
 import modules.er as er
 import modules.control as control
-import modules.bing as searchBing
 import modules.parsers as parser
 import modules.findData as findData_local
 import modules.config as config
+import modules.graph as graph
+import modules.spainpress as spainpress
+import modules.facebook as facebook
+import modules.ine_nombreApellidos as INEapellidos
 
+def get_PersonalData_Wikipedia(target):
 
-#Cabeceras para los requests
-headers = {'User-Agent': 'My User Agent 1.0'}
-
-TAG_RE = re.compile(r'<[^>]+>')
-def remove_tags(text):
-    return TAG_RE.sub('', text)
+    try:
+        wiki_wiki = wikipediaapi.Wikipedia('es')
+        page_py = wiki_wiki.page(target)
+        
+        URL = page_py.canonicalurl
+        HTML = requests.get(URL)
+        parser.extract_personalData_wikipedia(HTML)
+    except:
+        pass
 
 #Funciones para buscar en BORME
 def parserLibreborme_json(j):
-    print "|----[INFO][CARGOS EN EMPRESAS ACTUALMENTE][>] "
+    print()
+    print("|----[INFO][CARGOS EN EMPRESAS ACTUALMENTE][>] ")
     for cargos_actuales in j["cargos_actuales"]:
-        print u"    - Desde: " + cargos_actuales["date_from"] + " hasta la actualidad."
-        print u"    - Empresa: " + cargos_actuales["name"]
-        print u"    - Cargo: " + cargos_actuales["title"]
+        print("    - Desde: " + cargos_actuales["date_from"] + " hasta la actualidad.")
+        print("    - Empresa: " + cargos_actuales["name"])
+        print("    - Cargo: " + cargos_actuales["title"])
 
         if cargos_actuales["name"]:
 
-            print "|----[INFO][LOCAL DATA][Adjudicaciones][>] Este proceso puede tardar..."
-            findData_local.search_adjudicaciones(cargos_actuales["name"])
+            print("|----[INFO][LOCAL DATA][Adjudicaciones][>] Este proceso puede tardar...")
+            #findData_local.search_adjudicaciones(cargos_actuales["name"])
 
-    print "|----[INFO][CARGOS EN EMPRESAS HISTORICOS][>] "
+        config.companiesData_list.append(cargos_actuales["name"])
+
+    print()
+    print("|----[INFO][CARGOS EN EMPRESAS HISTORICOS][>] ")
     for cargos_historicos in j["cargos_historial"]:
         try:
-            print u"    - Desde: " + cargos_historicos["date_from"]
+            print("    - Desde: " + cargos_historicos["date_from"])
         except:
             pass
-        print u"    - Hasta: " + cargos_historicos["date_to"]
-        print u"    - Empresa: " + cargos_historicos["name"]
-        print u"    - Cargo: " + cargos_historicos["title"]
+        print("    - Hasta: " + cargos_historicos["date_to"])
+        print("    - Empresa: " + cargos_historicos["name"])
+        print("    - Cargo: " + cargos_historicos["title"])
         
         if cargos_historicos["name"]:
             
-            print "|----[INFO][LOCAL DATA][Adjudicaciones][>] Este proceso puede tardar..."
-            findData_local.search_adjudicaciones(cargos_historicos["name"])
-    
-    print "|----[FUENTES][BORME][>] "
+            print("|----[INFO][LOCAL DATA][Adjudicaciones][>] Este proceso puede tardar...")
+            #findData_local.search_adjudicaciones(cargos_historicos["name"])
+
+        config.data_list.append(cargos_historicos["name"])
+
+    print("|----[FUENTES][BORME][>] ")
     for boe in j["in_bormes"]:
-        print u"    - CVE: " + boe["cve"]
-        print u"    - URL: " + boe["url"]
+        print("    - CVE: " + boe["cve"])
+        print("    - URL: " + boe["url"])
 
 def searchLibreborme(apellidos, nombre):
     try:
@@ -84,7 +98,7 @@ def searchLibreborme(apellidos, nombre):
         html_text = html.text
 
         if len(html_text)>1:
-    
+            
             j = json.loads(html.text)
             parserLibreborme_json(j)
             
@@ -96,9 +110,9 @@ def searchLibreborme(apellidos, nombre):
                 parserLibreborme_json(j)
 
             except:
-                print "|----[INFO][EMPRESAS][>] No aparecen resultados en el BORME."
+                print("|----[INFO][EMPRESAS][>] No aparecen resultados en el BORME.")
     except:
-        print "|----[INFO][EMPRESAS][>] No aparecen resultados en el BORME."
+        print("|----[INFO][EMPRESAS][>] No aparecen resultados en el BORME.")
 
 #Funciones para buscar en Wikipedia
 def searchWikipedia(target):
@@ -108,16 +122,17 @@ def searchWikipedia(target):
         d0 = wikipedia.search(target)
 
         if d0:
-            print "|----[INFO][WIKIPEDIA][>] "
-            print "     |----[INFO][SEARCH][>] "
-            print "     - Resultados encontrados: "
+            print()
+            print("|----[INFO][WIKIPEDIA][>] ")
+            print("     |----[INFO][SEARCH][>] ")
+            print("     - Resultados encontrados: ")
             for r in d0:
-                print "     - " + r
+                print("     - " + r)
         else:
-            print "|----[INFO][WIKIPEDIA][>] No aparecen resultados en WIKIPEDIA."
+            print("|----[INFO][WIKIPEDIA][>] No aparecen resultados en WIKIPEDIA.")
 
     except:
-        print "[!][WARNING][WIKIPEDIA][>] Error en la API..."
+        print("[!][WARNING][WIKIPEDIA][>] Error en la API...")
 
     try:
         d1 = wikipedia.page(target)
@@ -126,16 +141,17 @@ def searchWikipedia(target):
         urlWIKI = d1.url
 
         if d1:
-            print "     |----[INFO][TAGS][>] "
+            print("     |----[INFO][TAGS][>] ")
             for l in linksWIKI:
-                print "     - " + l
-            print "|----[FUENTES][WIKIPEDIA][>] "
-            print "     - " + urlWIKI
+                print("     - " + l)
+            print("|----[FUENTES][WIKIPEDIA][>] ")
+            print("     - " + urlWIKI)
+            config.wikipediaData_list.append(urlWIKI)
         else:
-            print "|----[INFO][WIKIPEDIA][>] No aparecen resultados en WIKIPEDIA."
+            print("|----[INFO][WIKIPEDIA][>] No aparecen resultados en WIKIPEDIA.")
     
     except:
-        print "[!][WARNING][WIKIPEDIA][>] Error en la API o no aparecen resultados..."
+        print("[!][WARNING][WIKIPEDIA][>] Error en la API o no aparecen resultados...")
 
 #Funciones para buscar en Youtube
 def searchYoutube(target):
@@ -146,19 +162,20 @@ def searchYoutube(target):
     vids = soup.findAll('a',attrs={'class':'yt-uix-tile-link'})
     vids_titles = soup.findAll("div", attrs={'class', 'style-scope ytd-video-renderer'})
 
-    videolist=[]
+    videolist = config.youtubeData_list
 
     for v in vids:
         tmp = 'https://www.youtube.com' + v['href']
         videolist.append(tmp)
     
-    print "|----[INFO][YOUTUBE][>] "
+    print()
+    print("|----[INFO][YOUTUBE][>] ")
     for v in vids_titles:
-        print "     - " + v
-        print html
-    print "|----[FUENTES][YOUTUBE][>] "
+        print("     - " + v)
+        print(html)
+    print("|----[FUENTES][YOUTUBE][>] ")
     for u in videolist:
-        print "     - " + u
+        print("     - " + u)
 
 #Funciones para buscar en las Páginas Amarillas
 def cleanPaginasAmarillas_result(r):
@@ -169,6 +186,7 @@ def cleanPaginasAmarillas_result(r):
 
     return r
 
+#Funcion para buscar en página amarilla
 def searchPaginasAmarillas(nombre, a1, a2, loc):
     url = "http://blancas.paginasamarillas.es/jsp/resultados.jsp?no=" + nombre + "&ap1=" + a1 + "&ap2=" + a2 + "&sec=41&pgpv=1&tbus=0&nomprov=" + loc + "&idioma=spa"
 
@@ -176,93 +194,109 @@ def searchPaginasAmarillas(nombre, a1, a2, loc):
 
     soup = BeautifulSoup(html, "html.parser")
     r = soup.find("div", attrs={'class': 'resul yellad yellad_ad0'})
-    r = remove_tags(str(r))
+    r = er.remove_tags(str(r))
 
     if not r == "None":
-        print "|----[INFO][PAGINAS AMARILLAS][>] "
-        print "     - " + str(cleanPaginasAmarillas_result(r))
+        print("|----[INFO][PAGINAS AMARILLAS][>] ")
+        print("     - " + str(cleanPaginasAmarillas_result(r)))
     else:
         pass
 
-#Funciones para buscar en Infojobs
-def searchInfojobs(nombre, a1, a2, loc):
-    global headers
-    url_array = ("https://www.infojobs.net/" + nombre.replace(" ", "-") + "-" + a1.replace(" ", "-") + "-" + a2.replace(" ", "-") + ".prf", "https://www.infojobs.net/" + nombre.replace(" ", "-") + "-" + a1.replace(" ", "-") + ".prf", "https://www.infojobs.net/" + nombre.replace(" ", "-") + "-" + a1.replace(" ", "-") + "-1.prf")
-    for url in url_array:
-        html = requests.get(url, headers=headers).text
-        soup = BeautifulSoup(html, "html.parser")
-        h1s = soup.findAll("h1")
-        for h1 in h1s:
-            if "humano" in h1:
-                print "|----[INFO][INFOJOBS][>] Captcha detectado..."
-                break
-            else:
-                print "|----[INFO][INFOJOBS][>] " + str(h1)
+def search_google_and_downloadPDF(target):
 
-def search_bing_(target):
-    urls = searchBing.search_Bing(target)
-    for url in urls:
+    print("|--[INFO][>] Now we are going to download the PDF files where the target appears...")
+
+    #Creamos una carpeta con el nombre del target y nos movemos
+    name_dir = target.replace(" ", "-")
+    if os.path.isdir(f"data/{name_dir}"):
+        os.chdir(f"data/{name_dir}")
+    else:
+        os.mkdir(f"data/{name_dir}")
+        os.chdir(f"data/{name_dir}")
+
+    engine = Google()
+    results = engine.search(f"filetype:pdf intext:'{target}' ")
+    for r in results:
+        print ("|--[INFO][GOOGLE][RESULTS][>] " + r["title"])
+        print ("|----[INFO[DESCRIPTION][>] " + r["text"])
+        print ("|----[INFO][LINK][>] " + r["link"])
+
         try:
-            print "[|----[INFO][BING][>] " + str(url)
-            print parser.parser_email(requests.get(url).text)
-            print parser.parser_n_tlfn(requests.get(url).text)
-        except:
+            filename = wget.download(r["link"])
+            print ("|----[INFO][GOOGLE][DOWNLOAD][>] " + filename)
+        except Exception as e:
+            print ("|----[ERROR][>] " + str(e))
             pass
+    
+    os.chdir(f"../../")
+
+#Funcion para buscar en Google
+def search_google_(target):
+    engine = Google()
+    results = engine.search("'" + target + "'")
+    for r in results:
+        print ("|--[INFO][GOOGLE][RESULTS][>] " + r["title"] + " | " + r["text"] + " | " + r["link"])
+        
+        try:
+            tsd, td, tsu = extract(r["link"])
+            domain = td + '.' + tsu
+
+            web = requests.get(r["link"], timeout=3)
+            print ("|----[INFO][WEB][HTTP CODE][>] " + str(web.status_code) + "\n")
+
+            if web.status_code >= 200 or web.status_code < 300:
+
+                if not domain in config.BL_parserPhone:
+                    TEXT = er.remove_tags(str(web.text))
+                    parser.parserMAIN(TEXT)
+
+        except Exception as e:
+            print ("|----[ERROR][HTTP CONNECTION][>] " + str(e))
+
+def search_dogpile_(target):
+    engine = Dogpile()
+    results = engine.search("'" + target + "'")
+    for r in results:
+        print ("|--[INFO][DOGPILE][RESULTS][>] " + r["title"] + " | " + r["text"] + " | " + r["link"])
+        
+        try:
+            web = requests.get(r["link"], timeout=3)
+            print ("|----[INFO][WEB][HTTP CODE][>] " + str(web.status_code) + "\n")
+            if web.status_code >= 200 or web.status_code < 300:
+                TEXT = er.remove_tags(str(web.text))
+                parser.parserMAIN(TEXT)
+
+        except Exception as e:
+            print ("|----[ERROR][HTTP CONNECTION][>] " + str(e))
+
+
+def graphGenerator_Companies(target):
+    graph.get_GraphNodePersonalData(target)
 
 def banner():
-    print """
-                                                                                                        
-                             -:--:::-...-::---..` `                                                 
-                           `+s+so+++/++:---:::--:::::-::------..```                                 
-                           +dhsdho+/+/::://:::----/:++o/-----....--:-.                              
-                          -NNNNmdsdo+s/://:::::/-::y/://--:-.....-.--::.                            
-                          yNhyNMmdd++y://:/::::::::---::-/:::---.--.--::-`                          
-                          yh//hNNmhssy:/s+:/+/++/+++/////:+/:::-....-----.`                         
-                           .` :-/+ooso++o++ooososysoooo+://oso/::------.-.-`                        
-                                    `-``` ./oshhysssssssoooo++:::/:::----.-.                        
-                                              smhyoos++++sssso//------:+---.                        
-                                             `yNmdyo+oo+:.oyhysys+::--..---.                        
-    OSINT PARA TODOS                          +NNNmhso+/:-``+dmdhyho+:-:---:.`                       
-                                            .NNNNmyo/-``   `ymmdhyys+++::--..                       
-        E                                   hNmNmho/`       /NNmdhhms+oo-.....                      
-                                           +Nmdddh+`      ` .NNmdmNo/o/+:----:                      
-            INVESTIGA CONMIGO...          .Nmmddhs-        `:NNNNd/:+++o+/:---                      
-                                         .dmmmdho/.       :+dMNsso+/+++o+++:--`                     
-                                        :mmmdhyo/`     `+dNNdsys/+++/+/+/o+/--`                     
-                                       oNmddhs+:.-.  `+mNNNy+o++////////+++/:-                      
-                                     -ydhhyss++hdho-+dNNNh++o+///::////+++///.                      
-                                   .ydhyssooosmmmddmmNNds++++/:::://////++++/.                      
-                                  yddysso+ooydmmdhhmNms+++:`/yoo+/////++/+++:.                      
-                                  sdhss++shhdhyhhymmy+++:`  .mhyso++///+////--.                     
-                                  mmhss+hhmdhsshmmyoo/.      ymdhyyo+///+++/:---`                   
-                                  hNmdhhmdmdyydmy+o/.        -mddhhys+//o++//--:--`                 
-                                   /mMMNmdmNmdyo+:`           +ddddhyo//ooo+:--:::--.`              
-                                     :+syhhyo/:.               odddhhs+/+sso+:.:::::::-.`         """
-    print "-----------------------------------------------------------------------------------------------"
-    print "DANTE'S GATES MINIMAL v 1.0 | <<TIP-1337>> | Gorgue de Triana | QUANTIKA14 | @JORGEWEBSEC"
-    print "     VERSION: 1.0 | 09/02/2019 | INVESTIGA CONMIGO DESDE EL SU | WWW.QUANTIKA14.COM "
+    print(config.banner)
 
 def menu():
-    print ""
-    print "-----------------------------------------------------------------------------------------------"
-    print "Dante's Gates Minimal Version es un buscador inteligente para hacer OSINT de forma automática."
-    print "Toda la información es siempre de fuentes abiertas y siempre se dará la dirección de las fuentes"
-    print ""
-    print "__________________________________________________"
-    print "| 1. Nombre y apellidos                          |"
-    print "| 2. Nombre, apellidos y ciudad                  |"
-    print "| 3. Buscar nombres y apellidos de una lista     |"
-    print "|________________________________________________|"
+    print("__________________________________________________")
+    print("| 1. Name and surnames                           |")
+    print("| 2. Name, surnames and city                     |")
+    print("| 3. Search names and surnames in list           |")
+    print("|________________________________________________|")
+    print()
 
-    m = int(raw_input("Selecciona 1/2/3: "))
+    m = int(input("Select 1/2/3: "))
     if m == 1:
-        #Datos de entrada sin limpiar tildes y simbolos
-        nombre = raw_input(u"Por favor indique el nombre: ")
-        apellido1 = raw_input(u"Por favor indique el primer apellido: ")
-        apellido2 = raw_input(u"Por favor indique el segundo apellido: ")
+        
+        nombre = input("Insert name: ")
+        apellido1 = input("Insert surname (only one): ")
+        apellido2 = input("Insert second surname: ")
+
 
         #Buscamos si aparece en la lista de politicos investigados o condenados
         findData_local.search_investigados_condenados_politicosSpain(nombre, apellido1)
+
+        #Target sin filtrar
+        target_no_clean = nombre + " " + apellido1 + " " + apellido2
 
         #Limpiamos de acentos
         nombre_ = er.replace_acentos(nombre)
@@ -277,22 +311,48 @@ def menu():
         target = nombre_ + " " + apellido1_ + " " + apellido2_
         apellidos_ = apellido1_ + " " + apellido2_
         
+        #LANZADERA DE FUNCIONES
+        INEapellidos.searchApellidos(nombre, apellido1, apellido2)
         searchWikipedia(target)
+        get_PersonalData_Wikipedia(target_no_clean)
         searchLibreborme(apellidos_, nombre_)
         searchYoutube(target)
-        search_bing_(target)
+        spainpress.search_abc_es(target)
+        facebook.get_postsFB(target)
 
-        print ""
-        print "[--------------------------------------------------]"
-        print ""
-        findData_local.search_and_find_data(nombre_, apellido1_, apellido2_)
+        #Buscadores
+        m = input("Do you want to search with your name in search engines like Google and DogPile? [Y/n]")
+        if m == "y" or m == "Y":
+            search_google_(target)
+            search_dogpile_(target)
+        else:
+            print ("|----[END][>] Author's message: 'Google knows much more information than you think'")
+
+        #Descargamos PDFs
+        m = input("Do you want to download pdf files of the target? [Y/n]")
+        if m == "y" or m == "Y":
+            search_google_and_downloadPDF(target)
+        else:
+            print ("|----[END][>] Author's message: 'PDFs are a mine of information. You miss it'")
+
+        #Creamos grafo
+        m = input("Do you want a report? [Y/n]")
+        if m == "y" or m == "Y":
+            graphGenerator_Companies(target)
+        else:
+            print ("|----[END][>] Author's message: 'In times of crisis the intelligent seek solutions and the useless culprits'")
+
+        #findData_local.search_and_find_data(nombre_, apellido1_, apellido2_)
 
     if m == 2:
-        nombre = raw_input(u"Por favor indique el nombre: ")
-        apellido1 = raw_input(u"Por favor indique el primer apellido: ")
-        apellido2 = raw_input(u"Por favor indique el segundo apellido: ")
-        loc = raw_input(u"Por favor indique la ciudad: ")
+        nombre = input("Insert name: ")
+        apellido1 = input("Insert surname (only one): ")
+        apellido2 = input("Insert second surname: ")
+        loc = input("Insert city: ")
 
+        #Target sin filtrar
+        target_no_clean = nombre + " " + apellido1 + " " + apellido
+        
         #Buscamos si aparece en la lista de politicos investigados o condenados
         findData_local.search_investigados_condenados_politicosSpain(nombre, apellido1)
 
@@ -311,27 +371,38 @@ def menu():
         target = nombre + " " + apellido1 + " " + apellido2
         apellidos = apellido1 + " " + apellido2
         
+        #LANZADERA DE FUNCIONES
+        INEapellidos.searchApellidos(nombre, apellido1, apellido2)
+        get_PersonalData_Wikipedia(target_no_clean)
         searchWikipedia(target)
         searchLibreborme(apellidos, nombre)
         searchYoutube(target)
         searchPaginasAmarillas(nombre, apellido1, apellido2, loc)
-        searchInfojobs(nombre, apellido1, apellido2, loc)
-        print ""
-        print "[--------------------------------------------------]"
-        print ""
+        search_google_(target)
+        spainpress.search_abc_es(target)
+        facebook.get_postsFB(target)
+        search_google_and_downloadPDF(target)
+
+        print("")
+        print("[--------------------------------------------------]")
+        print("")
         findData_local.search_and_find_data(nombre, apellido1, apellido2)
 
     if m == 3:
-        print "[INFO][LISTA DE NOMBRES Y APELLIDOS][>] Por defecto es 'targets.txt'..."
-        print "[INFO][LISTA DE NOMBRES Y APELLIDOS][>] Si quieres cambiar el archivo, puedes hacerlo en modules/config.py"
+        print("[INFO][NAMES AND SECONDS NAMES LIST][>] by default is 'targets.txt'...")
+        print("[INFO][NAMES AND SECONDS NAMES LIST][>] If you want to change it: modules/config.py")
         file_ = open(config.target_list, 'r')
         for target in file_.readlines():
             
-			
+            name_target = target.replace("||", " ").strip()
+            print("|----[TARGET][>] " + name_target)
+            #Buscamos su edad y fallecimiento en Wikipedia
+            get_PersonalData_Wikipedia(name_target)
+
             target_ = target.split("||")
             nombre = target_[0]
             apellido1 = target_[1]
-            print "[TARGET][>] " + nombre + " " + apellido1
+            
 
             #Buscamos si aparece en la lista de politicos investigados o condenados
             findData_local.search_investigados_condenados_politicosSpain(str(nombre), str(apellido1))
