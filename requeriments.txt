@@ -16,3 +16,4 @@ facebook-scraper
 matplotlib
 tldextract
 newspaper
+pillow>=8.3.2 # not directly required, pinned by Snyk to avoid a vulnerability
