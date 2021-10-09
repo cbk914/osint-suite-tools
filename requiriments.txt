@@ -1,0 +1,25 @@
+pydns
+validate_email
+bs4
+wget
+pymongo
+requests[socks]
+wikipedia
+wikipedia-api
+requests
+twint
+random-user-agent
+py3DNS
+py3-validate-email
+mechanize
+datefinder
+networkx
+facebook-scraper
+matplotlib
+tldextract
+pillow>=8.3.2 # not directly required, pinned by Snyk to avoid a vulnerability
+newspaper3k
+pysocks
+texttable
+docopt
+html-reports
