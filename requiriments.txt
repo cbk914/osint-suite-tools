@@ -1,3 +1,5 @@
+pydns
+validate_email
 bs4
 wget
 pymongo
@@ -15,4 +17,8 @@ networkx
 facebook-scraper
 matplotlib
 tldextract
-newspaper
+newspaper3k
+pysocks
+texttable
+docopt
+html-reports
