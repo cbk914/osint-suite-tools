@@ -17,8 +17,11 @@ networkx
 facebook-scraper
 matplotlib
 tldextract
+pillow>=8.1.0 # not directly required, pinned by Snyk to avoid a vulnerability
+pyyaml>=4.2b1 # not directly required, pinned by Snyk to avoid a vulnerability
 newspaper3k
 pysocks
 texttable
 docopt
 html-reports
+
